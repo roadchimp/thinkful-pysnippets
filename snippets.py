@@ -23,10 +23,20 @@ def get(name):
   logging.info("Retrieving snippet {!r}".format(name))
   cursor = connection.cursor()
   command = "select message from snippets where keyword=%s"
-  cursor.execute(command, (name,)) 
-  output = cursor.fetchone()
+  try:
+    command = "insert into snippets values (%s, %s)"
+    cursor.execute(command, (name, snippet))
+  except psycopg2.IntegrityError as e:
+    connection.rollback()
+    command = "update snippets set message=%s where keyword=%s"
+    cursor.execute(command, (name, snippet))
+  row = cursor.fetchone()
   logging.debug("Snippet retrieved successfully.")
-  return output
+  if not row:
+    # No snippet was found with that name.
+    print "We could not find a Snippet with the name: {}. Please try again!".format(name) 
+  else:
+    return row[0]
 
 def main():
   """Main Function"""
